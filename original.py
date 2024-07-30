@@ -5,7 +5,7 @@ from statsmodels.tsa.seasonal import seasonal_decompose
 import matplotlib.pyplot as plt
 from matplotlib import pyplot
 
-def change_point_detection(data: pd.Series, model: str, min_size: int, penalty: int) :
+def change_point_detection(data: pd.Series, model: str, min_size: int, penalty: int, model_type: str):
     """
     This function uses the PELT (Pruned Exact Linear Time) function of the Ruptures library
     to analyze the given time-series data for change point detection.
@@ -24,34 +24,38 @@ def change_point_detection(data: pd.Series, model: str, min_size: int, penalty: 
     data_np = data.to_numpy()
     algo = rpt.Pelt(model=model, min_size=min_size).fit(data_np)
     change_points = algo.predict(pen=penalty)
-    # return result
-    
-    
-    
     
     valid_change_points = [cp for cp in change_points if cp < len(data)]
-
     # Convert valid change points to the corresponding times
     change_points_times = data.index[valid_change_points]
 
-    # Sort change points by time to connect them in order
-    sorted_change_points_times = sorted(change_points_times)
-
-    # Extract the corresponding temperature values for the sorted change points
-    sorted_change_points_values = data.loc[sorted_change_points_times]
-
-    plt.figure(figsize=(40, 6))
+    plt.figure(figsize=(10, 9))
+    plt.subplot(4, 1, 1)
     plt.plot(data.index, data.values, linestyle = "dashed", label='Temperature')
-    plt.vlines(x = sorted_change_points_times, ymin = 70, ymax = 95,
+    plt.vlines(x = change_points_times, ymin = 70, ymax = 95,
             colors = 'red',
             label = 'Change points')
     plt.title('Original Temp (F) Change Point Detection')
     plt.xlabel('Time')
     plt.ylabel('Temperature')
     plt.legend()
+    
+    decompose_result = seasonal_decompose(data, model=model_type, period=60)
+    plt.subplot(4, 1, 2)
+    plt.plot(decompose_result.trend, label='Trend', color='r')
+    plt.ylabel('Trend')
+    plt.title('Original Temp (F) Seasonality analysis')
+    plt.subplot(4, 1, 3)
+    plt.plot(decompose_result.seasonal, label='Seasonal', color='g')
+    plt.ylabel('Seasonal')
+    plt.subplot(4, 1, 4)
+    plt.plot(decompose_result.resid, label='Residual', color='b')
+    plt.ylabel('Residual')
+    plt.tight_layout()
     plt.show()
+    return change_points_times
 
-def detect_seasonality(data: pd.Series, model_type: str) -> pd.DataFrame:
+def detect_seasonality(data: pd.Series, model_type: str):
     """
     This function analyzes a given time-series data for seasonality.
     
@@ -62,10 +66,52 @@ def detect_seasonality(data: pd.Series, model_type: str) -> pd.DataFrame:
     :return: Returns a Pandas DataFrame that contain the Trend, Seasonal, and Residual components computed using the given model type. Can be plotted using the "plot" method of Pandas DataFrame class.
     :rtype: pd.DataFrame
     """
-    # data.index.freq = '5min'
     decompose_result = seasonal_decompose(data, model=model_type, period=60)
-    decompose_result.plot()
+    plt.figure(figsize = (13, 6))
+    plt.subplot(3, 1, 1)
+    plt.plot(decompose_result.trend, label='Trend', color='r')
+    plt.title('Original Temp (F) Breakpoint Seasonality')
+    plt.ylabel('Trend')
+    plt.subplot(3, 1, 2)
+    plt.plot(decompose_result.seasonal, label='Seasonal', color='g')
+    plt.ylabel('Seasonal')
+    plt.subplot(3, 1, 3)
+    plt.plot(decompose_result.resid, label='Residual', color='b')
+    plt.ylabel('Residual')
+    plt.tight_layout()
     plt.show()
+    
+    # data.index.freq = '5min'
+    # decompose_result1 = seasonal_decompose(data1, model=model_type, period=60)
+    # plt.figure(figsize = (20, 6))
+    # plt.subplot(3, 2, 1)
+    # plt.plot(decompose_result1.trend, label='Trend', color='r')
+    # plt.ylabel('Trend')
+    # plt.subplot(3, 2, 3)
+    # plt.plot(decompose_result1.seasonal, label='Seasonal', color='g')
+    # plt.ylabel('Seasonal')
+    # plt.subplot(3, 2, 5)
+    # plt.plot(decompose_result1.resid, label='Residual', color='b')
+    # plt.ylabel('Residual')
+    # # plt.plot(decompose_result.trend, color='r')
+    # plt.tight_layout()
+    
+    # decompose_result2 = seasonal_decompose(data2, model=model_type, period=60)
+    # # plt.figure(figsize = (10, 6))
+    # plt.subplot(3, 2, 2)
+    # plt.plot(decompose_result2.trend, label='Trend', color='r')
+    # plt.ylabel('Trend')
+    # # plt.title('Synthetic Temp (F) Breakpoint seasonality')
+    # plt.subplot(3, 2, 4)
+    # plt.plot(decompose_result2.seasonal, label='Seasonal', color='g')
+    # plt.ylabel('Seasonal')
+    # plt.subplot(3, 2, 6)
+    # plt.plot(decompose_result2.resid, label='Residual', color='b')
+    # plt.ylabel('Residual')
+    # # plt.plot(decompose_result.trend, color='r')
+    # plt.tight_layout()
+    # plt.suptitle('Original Temp (F) Breakpoint seasonality')
+    # plt.show()
     # return decompose_result
 
 df = pd.read_csv('Original_and_Synthetic_Temp_Data.csv')
@@ -82,9 +128,13 @@ df.set_index('Time', inplace=True)
 
 og_temp = df['Original Temp (F)']
 
-change_point_detection(og_temp, model="l2", min_size=250, penalty=30) ##star
 # change_point_detection(og_temp, model="l2", min_size=250, penalty=15)
-
+# breaks = change_point_detection(og_temp, model="l2", min_size=250, penalty=30, model_type="Multiplicative") ##star
+breaks = change_point_detection(og_temp, model="l2", min_size=250, penalty=30, model_type="Multiplicative") ##star
+for i in range(len(breaks)-1):
+    segment = og_temp[breaks[i]:breaks[i+1]]
+    # segment2 = og_temp[breaks[i+1]:breaks[i+2]]
+    detect_seasonality(segment, model_type="Multiplicative")
 
 # detect_seasonality(og_temp, "Additive")
 # detect_seasonality(og_temp, "Multiplicative")
