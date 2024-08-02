@@ -113,6 +113,18 @@ def detect_seasonality(data: pd.Series, model_type: str):
     # plt.suptitle('Original Temp (F) Breakpoint seasonality')
     # plt.show()
     # return decompose_result
+    
+def trend_seasonality(og_data: pd.Series, syn_data: pd.Series, model_type: str):
+    og_result = seasonal_decompose(og_data, model=model_type, period=60)
+    syn_result = seasonal_decompose(syn_data, model=model_type, period=60)
+    
+    plt.figure(figsize = (10, 6))
+    plt.plot(og_result.trend, label='Original Temp Trend', color='r')
+    plt.plot(syn_result.trend, label='Synthetic Temp Trend', color='g')
+    plt.title("Comparing Original Temp Breakpoint Trends Against Synthetic Temp")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
 
 df = pd.read_csv('Original_and_Synthetic_Temp_Data.csv')
 
@@ -127,6 +139,7 @@ df['Time'] = pd.to_datetime(df['Time'])
 df.set_index('Time', inplace=True)
 
 og_temp = df['Original Temp (F)']
+syn_temp = df['Synthetic Temp (F)']
 
 # change_point_detection(og_temp, model="l2", min_size=250, penalty=15)
 # breaks = change_point_detection(og_temp, model="l2", min_size=250, penalty=30, model_type="Multiplicative") ##star
@@ -134,7 +147,10 @@ breaks = change_point_detection(og_temp, model="l2", min_size=250, penalty=30, m
 for i in range(len(breaks)-1):
     segment = og_temp[breaks[i]:breaks[i+1]]
     # segment2 = og_temp[breaks[i+1]:breaks[i+2]]
-    detect_seasonality(segment, model_type="Multiplicative")
+    # detect_seasonality(segment, model_type="Multiplicative")
+    
+    syn_seg = syn_temp[breaks[i]:breaks[i+1]]
+    trend_seasonality(segment, syn_seg, "Multiplicative")
 
 # detect_seasonality(og_temp, "Additive")
 # detect_seasonality(og_temp, "Multiplicative")
